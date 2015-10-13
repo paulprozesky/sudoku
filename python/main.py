@@ -1,5 +1,11 @@
 __author__ = 'paulp'
 
+import logging
+
+LOGGER = logging.getLogger()
+
+LOGGER.info('a log message')
+
 blocks = []
 
 def read_puzzles_from_file(filename):
