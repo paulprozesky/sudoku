@@ -2,7 +2,6 @@ __author__ = 'paulp'
 
 blocks = []
 
-
 def read_puzzles_from_file(filename):
     """
     Read puzzle files as from http://magictour.free.fr/sudoku.htm
@@ -10,26 +9,22 @@ def read_puzzles_from_file(filename):
     fptr = open(filename, 'r')
     lines = fptr.readlines()
     fptr.close()
-    boards = []
+    puzzles = []
     for line in lines:
-        blks = []
+        if len(line) < 40:
+            break
+        puz = []
         for idx in range(0, 81):
-            blk = Block(addr_from_idx(idx))
-            blks.append(blk)
-        for blk in blks:
-            val = line[blk.idx]
+            val = line[idx]
             if val == '.':
-                continue
+                puz.append(-1)
             else:
-                blk.set_value(int(val))
-        boards.append(blks)
-        break
-    print boards[0]
+                puz.append(int(val))
+        puzzles.append(puz)
+    return puzzles
 
-read_puzzles_from_file('/home/paulp/projects/sudoku/subig20.txt')
-
-raise RuntimeError
-
+puzzles = read_puzzles_from_file('/home/paulp/projects/sudoku.github/puzzles/subig20.txt')
+print 'Loaded %i puzzles.' % len(puzzles)
 
 def idx_from_addr(addr):
     return (addr[0] * 9) + addr[1]
@@ -98,8 +93,15 @@ class Block(object):
         self.col = col
         self.cel = cel_from_addr((row, col))
         self.celmates = celmates(cel=self.cel)
+        self.celmates.pop(self.celmates.index(self.idx))
         self.rowmates = rowmates(row=self.row)
+        self.rowmates.pop(self.rowmates.index(self.idx))
         self.colmates = colmates(col=self.col)
+        self.colmates.pop(self.colmates.index(self.idx))
+        self.areamates = self.celmates[:]
+        self.areamates.extend(self.rowmates)
+        self.areamates.extend(self.colmates)
+        self.areamates = list(set(self.areamates))
         self.val = val
         self.pos = range(1, 10)
         if val > 0:
@@ -152,131 +154,173 @@ class Block(object):
         searchmates(self.colmates)
         searchmates(self.celmates)
 
-# make the blocks
-for row in xrange(0, 9):
-    for col in xrange(0, 9):
-        blk = Block(row, col)
-        blocks.append(blk)
-        print '%3i ' % blk.cel,
-    print ''
+    def solve_pairs(self):
+        """
+        Look for pairs of possibles
+        :return:
+        """
+        twopos = []
+        for idx in self.areamates:
+            if len(blocks[idx].pos) == 2:
+                twopos.append(idx)
+        if len(twopos) == 2:
+            raise RuntimeError('yay')
+        elif len(twopos) > 2:
+            raise RuntimeError('this is not possible')
 
-# initial values
-blocks[idx_from_addr((0, 1))].set_value(5)
-blocks[idx_from_addr((0, 3))].set_value(4)
-blocks[idx_from_addr((0, 6))].set_value(8)
+for puzctr in range(0, 10):
 
-blocks[idx_from_addr((1, 2))].set_value(7)
-blocks[idx_from_addr((1, 8))].set_value(9)
+    puz = puzzles[puzctr]
 
-blocks[idx_from_addr((2, 0))].set_value(4)
-blocks[idx_from_addr((2, 4))].set_value(1)
-blocks[idx_from_addr((2, 7))].set_value(6)
+    # make the blocks
+    blocks = []
+    for row in xrange(0, 9):
+        for col in xrange(0, 9):
+            blk = Block(row, col)
+            blocks.append(blk)
+            print '%3i ' % blk.cel,
+        print ''
 
-blocks[idx_from_addr((3, 3))].set_value(7)
-blocks[idx_from_addr((3, 5))].set_value(9)
-blocks[idx_from_addr((3, 8))].set_value(8)
+    print puz
+    for idx in range(0, 81):
+        if puz[idx] > 0:
+            blocks[idx].set_value(puz[idx])
 
-blocks[idx_from_addr((4, 2))].set_value(6)
-blocks[idx_from_addr((4, 4))].set_value(4)
-blocks[idx_from_addr((4, 6))].set_value(7)
+    blk = blocks[0]
+    print blk.celmates
+    print blk.rowmates
+    print blk.colmates
+    print blk.areamates
+    # raise RuntimeError
 
-blocks[idx_from_addr((5, 0))].set_value(5)
-blocks[idx_from_addr((5, 3))].set_value(1)
-blocks[idx_from_addr((5, 5))].set_value(2)
+    # initial values
+    # blocks[idx_from_addr((0, 1))].set_value(5)
+    # blocks[idx_from_addr((0, 3))].set_value(4)
+    # blocks[idx_from_addr((0, 6))].set_value(8)
+    #
+    # blocks[idx_from_addr((1, 2))].set_value(7)
+    # blocks[idx_from_addr((1, 8))].set_value(9)
+    #
+    # blocks[idx_from_addr((2, 0))].set_value(4)
+    # blocks[idx_from_addr((2, 4))].set_value(1)
+    # blocks[idx_from_addr((2, 7))].set_value(6)
+    #
+    # blocks[idx_from_addr((3, 3))].set_value(7)
+    # blocks[idx_from_addr((3, 5))].set_value(9)
+    # blocks[idx_from_addr((3, 8))].set_value(8)
+    #
+    # blocks[idx_from_addr((4, 2))].set_value(6)
+    # blocks[idx_from_addr((4, 4))].set_value(4)
+    # blocks[idx_from_addr((4, 6))].set_value(7)
+    #
+    # blocks[idx_from_addr((5, 0))].set_value(5)
+    # blocks[idx_from_addr((5, 3))].set_value(1)
+    # blocks[idx_from_addr((5, 5))].set_value(2)
+    #
+    # blocks[idx_from_addr((6, 1))].set_value(6)
+    # blocks[idx_from_addr((6, 4))].set_value(2)
+    # blocks[idx_from_addr((6, 8))].set_value(4)
+    #
+    # blocks[idx_from_addr((7, 0))].set_value(3)
+    # blocks[idx_from_addr((7, 6))].set_value(2)
+    #
+    # blocks[idx_from_addr((8, 2))].set_value(8)
+    # blocks[idx_from_addr((8, 5))].set_value(3)
+    # blocks[idx_from_addr((8, 7))].set_value(5)
 
-blocks[idx_from_addr((6, 1))].set_value(6)
-blocks[idx_from_addr((6, 4))].set_value(2)
-blocks[idx_from_addr((6, 8))].set_value(4)
+    for loopctr in range(0, 1):
 
-blocks[idx_from_addr((7, 0))].set_value(3)
-blocks[idx_from_addr((7, 6))].set_value(2)
+        # show the possibles
+        for row in xrange(0, 9):
+            for col in xrange(0, 9):
+                blk = blocks[idx_from_addr((row, col))]
+                print '%3i ' % len(blk.pos),
+            print ''
 
-blocks[idx_from_addr((8, 2))].set_value(8)
-blocks[idx_from_addr((8, 5))].set_value(3)
-blocks[idx_from_addr((8, 7))].set_value(5)
+        # run a type 1 search
+        for row in xrange(0, 9):
+            for col in xrange(0, 9):
+                blk = blocks[idx_from_addr((row, col))]
+                blk.search_pos_1()
 
-# show the possibles
-for row in xrange(0, 9):
-    for col in xrange(0, 9):
-        blk = blocks[idx_from_addr((row, col))]
-        print '%3i ' % len(blk.pos),
-    print ''
+        for row in xrange(0, 9):
+            for col in xrange(0, 9):
+                blk = blocks[idx_from_addr((row, col))]
+                blk.solve_pairs()
 
-# run a type 1 search
-for row in xrange(0, 9):
-    for col in xrange(0, 9):
-        blk = blocks[idx_from_addr((row, col))]
-        blk.search_pos_1()
+        print ''
 
-# show the possibles again
-for row in xrange(0, 9):
-    for col in xrange(0, 9):
-        blk = blocks[idx_from_addr((row, col))]
-        print '%3i ' % len(blk.pos),
-    print ''
+        # show the possibles again
+        for row in xrange(0, 9):
+            for col in xrange(0, 9):
+                blk = blocks[idx_from_addr((row, col))]
+                print '%3i ' % len(blk.pos),
+            print ''
 
-# show the values
-for row in xrange(0, 9):
-    for col in xrange(0, 9):
-        blk = blocks[idx_from_addr((row, col))]
-        print '%2i ' % blk.val,
-    print ''
+        # show the values
+        for row in xrange(0, 9):
+            for col in xrange(0, 9):
+                blk = blocks[idx_from_addr((row, col))]
+                print '%2i ' % blk.val,
+            print ''
 
-raise RuntimeError
+        print 80 * '*'
 
-# print possibles
-#
-# for row in xrange(0, 9):
-#     print blocks[row]
+    continue
 
-# for row in xrange(0, 9):
-#     for col in xrange(0, 9):
-#         print '%d, ' % cell_from_index(row, col),
-#     print ''
-#
-# for cell in xrange(0, 9):
-#     print cell_mates(cell)
-#
-#
-# print possibles
+    # print possibles
+    #
+    # for row in xrange(0, 9):
+    #     print blocks[row]
 
-for row in xrange(0, 9):
-    for col in xrange(0, 9):
-        this_value = blocks[row][col]
-        these_possibles = possibles[row][col]
-        this_cell = cell_from_index(row, col)
-        if this_value != -1:
-            possibles[row][col] = []
-            continue
-        # search my column
-        for searchrow in xrange(0, 9):
-            try:
-                index = these_possibles.index(blocks[searchrow][col])
-                these_possibles.pop(index)
-            except ValueError:
-                pass
-        # search my row
-        for searchcol in xrange(0, 9):
-            try:
-                index = these_possibles.index(blocks[row][searchcol])
-                these_possibles.pop(index)
-            except ValueError:
-                pass
-        # search my cell
-        for celmates in cell_mates(this_cell):
-            try:
-                index = these_possibles.index(blocks[celmates[0]][celmates[1]])
-                these_possibles.pop(index)
-            except ValueError:
-                pass
-        # are we down to one value?
-        if len(these_possibles) == 1:
-            print row, col, this_value, these_possibles
+    # for row in xrange(0, 9):
+    #     for col in xrange(0, 9):
+    #         print '%d, ' % cell_from_index(row, col),
+    #     print ''
+    #
+    # for cell in xrange(0, 9):
+    #     print cell_mates(cell)
+    #
+    #
+    # print possibles
 
-print possibles
+    for row in xrange(0, 9):
+        for col in xrange(0, 9):
+            this_value = blocks[row][col]
+            these_possibles = possibles[row][col]
+            this_cell = cell_from_index(row, col)
+            if this_value != -1:
+                possibles[row][col] = []
+                continue
+            # search my column
+            for searchrow in xrange(0, 9):
+                try:
+                    index = these_possibles.index(blocks[searchrow][col])
+                    these_possibles.pop(index)
+                except ValueError:
+                    pass
+            # search my row
+            for searchcol in xrange(0, 9):
+                try:
+                    index = these_possibles.index(blocks[row][searchcol])
+                    these_possibles.pop(index)
+                except ValueError:
+                    pass
+            # search my cell
+            for celmates in cell_mates(this_cell):
+                try:
+                    index = these_possibles.index(blocks[celmates[0]][celmates[1]])
+                    these_possibles.pop(index)
+                except ValueError:
+                    pass
+            # are we down to one value?
+            if len(these_possibles) == 1:
+                print row, col, this_value, these_possibles
 
-raise RuntimeError
+    print possibles
 
-for row in xrange(0, 9):
-    for col in xrange(0, 9):
-        print row, col, cell_from_index(row, col), possibles[row][col]
+    raise RuntimeError
+
+    for row in xrange(0, 9):
+        for col in xrange(0, 9):
+            print row, col, cell_from_index(row, col), possibles[row][col]
