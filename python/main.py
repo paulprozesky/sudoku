@@ -176,6 +176,20 @@ class Block(object):
         elif len(twopos) > 2:
             raise RuntimeError('this is not possible')
 
+    def solve_triples(self):
+        """
+        Look for pairs of possibles
+        :return:
+        """
+        threepos = []
+        for idx in self.areamates:
+            if len(blocks[idx].pos) == 3:
+                threepos.append(idx)
+        if len(threepos) == 3:
+            raise RuntimeError('yay')
+        elif len(threepos) > 3:
+            raise RuntimeError('this is not possible')
+
 
 puz_solved = 0
 puz_failed = 0
