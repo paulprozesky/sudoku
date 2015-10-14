@@ -56,6 +56,9 @@ class Puzzle(object):
                 self.blocks.append(blk)
                 self.unknown_blocks.append(blk.idx)
 
+                print blk.idx
+                print blk.print_area_mates()
+
         # update the blocks from the initial values
         for idx in range(0, 81):
             if self.puzzle[idx] > 0:
@@ -176,9 +179,27 @@ class Block(object):
             self.pos = []
         self.blks = block_list
 
+    def print_area_mates(self):
+        for row in range(9):
+            for col in range(9):
+                idx = Puzzle.idx_from_addr((row, col))
+                if idx == self.idx:
+                    print ' @',
+                elif idx in self.areamates:
+                    print ' *',
+                else:
+                    print ' .',
+            print ''
+
     def set_value(self, val):
         self.val = val
         self.pos = []
+
+        # for idx in self.areamates:
+        #     self.blks[idx].update_pos(val)
+
+        WHYWYWYWY does the above work, but the below not?
+
         for idx in self.celmates:
             self.blks[idx].update_pos(val)
         for idx in self.rowmates:
@@ -192,9 +213,13 @@ class Block(object):
         try:
             idx = self.pos.index(val)
             self.pos.pop(idx)
+            removed = True
         except ValueError:
-            pass
+            removed = False
         if len(self.pos) == 1:
+            if not removed:
+                raise RuntimeError('How did this happen? Why was it not'
+                                   'updated before this?')
             if self.val != -1:
                 raise RuntimeError('Cannot have len(pos)==1 and val!=-1')
             LOGGER.debug('update_pos: block(%i,%i) value -> %i' %
