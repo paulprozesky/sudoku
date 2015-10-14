@@ -55,14 +55,34 @@ class Puzzle(object):
                 blk = Block(self.blocks, row, col)
                 self.blocks.append(blk)
                 self.unknown_blocks.append(blk.idx)
+                # print blk.idx
+                # blk.print_mates()
 
-                print blk.idx
-                print blk.print_area_mates()
+        self.print_puzzle(True)
 
         # update the blocks from the initial values
         for idx in range(0, 81):
             if self.puzzle[idx] > 0:
                 self.blocks[idx].set_value(self.puzzle[idx])
+
+    def print_puzzle(self, original=False):
+        for row in range(9):
+            for col in range(9):
+                idx = Puzzle.idx_from_addr((row, col))
+                if original:
+                    puz_val = self.puzzle[idx]
+                    if puz_val == -1:
+                        print '  .',
+                    else:
+                        print '%3i' % puz_val,
+                else:
+                    blk = self.blocks[idx]
+                    if blk.val == -1:
+                        print '  .',
+                    else:
+                        print '%3i' % blk.val,
+            print ''
+        print ''
 
     def unsolved(self):
         """
@@ -179,6 +199,49 @@ class Block(object):
             self.pos = []
         self.blks = block_list
 
+    def print_mates(self):
+        for row in range(9):
+            for col in range(9):
+                idx = Puzzle.idx_from_addr((row, col))
+                if idx == self.idx:
+                    print ' @',
+                elif idx in self.areamates:
+                    print ' *',
+                else:
+                    print ' .',
+
+            print 10*' ',
+            for col in range(9):
+                idx = Puzzle.idx_from_addr((row, col))
+                if idx == self.idx:
+                    print ' @',
+                elif idx in self.celmates:
+                    print ' *',
+                else:
+                    print ' .',
+
+            print 10*' ',
+            for col in range(9):
+                idx = Puzzle.idx_from_addr((row, col))
+                if idx == self.idx:
+                    print ' @',
+                elif idx in self.rowmates:
+                    print ' *',
+                else:
+                    print ' .',
+
+            print 10*' ',
+            for col in range(9):
+                idx = Puzzle.idx_from_addr((row, col))
+                if idx == self.idx:
+                    print ' @',
+                elif idx in self.colmates:
+                    print ' *',
+                else:
+                    print ' .',
+
+            print ''
+
     def print_area_mates(self):
         for row in range(9):
             for col in range(9):
@@ -191,21 +254,45 @@ class Block(object):
                     print ' .',
             print ''
 
+    def print_row_mates(self):
+        for row in range(9):
+            for col in range(9):
+                idx = Puzzle.idx_from_addr((row, col))
+                if idx == self.idx:
+                    print ' @',
+                elif idx in self.rowmates:
+                    print ' *',
+                else:
+                    print ' .',
+            print ''
+
+    def print_col_mates(self):
+        for row in range(9):
+            for col in range(9):
+                idx = Puzzle.idx_from_addr((row, col))
+                if idx == self.idx:
+                    print ' @',
+                elif idx in self.colmates:
+                    print ' *',
+                else:
+                    print ' .',
+            print ''
+
     def set_value(self, val):
         self.val = val
         self.pos = []
 
-        # for idx in self.areamates:
+        for idx in self.areamates:
+            self.blks[idx].update_pos(val)
+
+        # WHYWYWYWY does the above work, but the below not?
+
+        # for idx in self.celmates:
         #     self.blks[idx].update_pos(val)
-
-        WHYWYWYWY does the above work, but the below not?
-
-        for idx in self.celmates:
-            self.blks[idx].update_pos(val)
-        for idx in self.rowmates:
-            self.blks[idx].update_pos(val)
-        for idx in self.colmates:
-            self.blks[idx].update_pos(val)
+        # for idx in self.rowmates:
+        #     self.blks[idx].update_pos(val)
+        # for idx in self.colmates:
+        #     self.blks[idx].update_pos(val)
 
     def update_pos(self, val):
         if len(self.pos) == 0:
@@ -327,15 +414,12 @@ for puzctr in range(314,315):
 
     puz = Puzzle(puzzles[puzctr])
 
-    for row in range(9):
-        for col in range(9):
-            print '%3i' % puz.blocks[Puzzle.idx_from_addr((row, col))].val,
-        print ''
+    puz.print_puzzle()
 
     for loopctr in range(0, 1):
 
         # run searches
-        puz.run_type_1()
+        # puz.run_type_1()
         # puz.run_pairs()
 
         nonzero_pos = puz.get_pos()
@@ -355,11 +439,7 @@ for puzctr in range(314,315):
 
         # print 80 * '*'
 
-print ''
-for row in range(9):
-    for col in range(9):
-        print '%3i' % puz.blocks[Puzzle.idx_from_addr((row, col))].val,
-    print ''
+puz.print_puzzle()
 
 print 'solved(%i) failed(%i)' % (puz_solved, puz_failed)
 
