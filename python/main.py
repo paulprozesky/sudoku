@@ -1,12 +1,8 @@
-__author__ = 'paulp'
-
 import logging
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 LOGGER = logging.getLogger('pysudoku')
-
-blocks = []
 
 
 def read_puzzles_from_file(puzfile):
@@ -33,17 +29,15 @@ def read_puzzles_from_file(puzfile):
 filename = '/home/paulp/projects/sudoku.github/puzzles/subig20.txt'
 filename = '/home/paulp/projects/sudoku.github/puzzles/top870.txt'
 
-filename = '/home/paulp/projects/code/sudoku.github/puzzles/top870.txt'
+#filename = '/home/paulp/projects/code/sudoku.github/puzzles/top870.txt'
 
 puzzles = read_puzzles_from_file(filename)
 print 'Loaded %i puzzles from %s.' % (len(puzzles), filename)
-
 
 class Puzzle(object):
     """
     A Sudoku puzzle.
     """
-
     def __init__(self, puzzle):
         self.puzzle = puzzle
         self.blocks = []
@@ -92,16 +86,55 @@ class Puzzle(object):
         return len(self.unknown_blocks)
 
     def run_type_1(self):
-        for row in xrange(0, 9):
-            for col in xrange(0, 9):
-                blk = self.blocks[Puzzle.idx_from_addr((row, col))]
-                blk.search_pos_1()
+        """
+        If a possible only occurs once in a row, col or cel,
+        then it must be that value
+        :return:
+        """
+        for rcc in [ROWS, COLS, CELS]:
+            for rowctr, row in enumerate(rcc):
+                rpos = {}
+                for idx in row:
+                    for pos in self.blocks[idx].pos:
+                        if pos not in rpos:
+                            rpos[pos] = []
+                        rpos[pos].append(idx)
+                LOGGER.debug('RCC %i possibles: %s' % (rowctr, rpos))
+                for pos in rpos:
+                    if len(rpos[pos]) == 1:
+                        LOGGER.debug('          block %i can only be %i' % (rpos[pos][0], pos))
+                        blk = self.blocks[rpos[pos][0]]
+                        blk.set_value(pos)
 
     def run_pairs(self):
-        for row in xrange(0, 9):
-            for col in xrange(0, 9):
-                blk = self.blocks[Puzzle.idx_from_addr((row, col))]
-                blk.solve_pairs()
+        for rcc in [ROWS, COLS, CELS]:
+            for rowctr, row in enumerate(rcc):
+                pairs = []
+                for idx in row:
+                    blk = self.blocks[idx]
+                    if len(blk.pos) == 2:
+                        pairs.append(idx)
+                if len(pairs) == 2:
+                    if self.blocks[pairs[0]].pos == self.blocks[pairs[1]].pos:
+                        raise RuntimeError('yay')
+                        print pairs[0], self.blocks[pairs[0]].pos
+                        print pairs[1], self.blocks[pairs[1]].pos
+
+    def run_triples(self):
+        for rcc in [ROWS, COLS, CELS]:
+            for rowctr, row in enumerate(rcc):
+                pairs = []
+                for idx in row:
+                    blk = self.blocks[idx]
+                    if len(blk.pos) == 3:
+                        pairs.append(idx)
+                if len(pairs) == 3:
+                    if (self.blocks[pairs[0]].pos == self.blocks[pairs[1]].pos) and\
+                            (self.blocks[pairs[0]].pos == self.blocks[pairs[2]].pos):
+                        raise RuntimeError('yay')
+                        print pairs[0], self.blocks[pairs[0]].pos
+                        print pairs[1], self.blocks[pairs[1]].pos
+
 
     def get_pos(self):
         # get the possibles again
@@ -162,8 +195,8 @@ class Puzzle(object):
         col_start = (cel_num % 3) * 3
         row_start = (cel_num / 3) * 3
         celmates = []
-        for row in xrange(row_start, row_start + 3):
-            for col in xrange(col_start, col_start + 3):
+        for row in range(row_start, row_start + 3):
+            for col in range(col_start, col_start + 3):
                 celmates.append(Puzzle.idx_from_addr((row, col)))
         return celmates
 
@@ -175,6 +208,10 @@ class Puzzle(object):
     @staticmethod
     def colmates(col):
         return range(col, 9*9, 9)
+
+ROWS = [range(idx, idx+9) for idx in range(0, 81, 9)]
+COLS = [range(idx, 81, 9) for idx in range(9)]
+CELS = [Puzzle._celmates_from_cel(idx) for idx in range(9)]
 
 
 class Block(object):
@@ -279,150 +316,39 @@ class Block(object):
             print ''
 
     def set_value(self, val):
+        LOGGER.debug('%i: updating val -> %i - %s' % (self.idx, val, 50 * '*'))
         self.val = val
         self.pos = []
-
         for idx in self.areamates:
             self.blks[idx].update_pos(val)
-
-        # WHYWYWYWY does the above work, but the below not?
-
-        # for idx in self.celmates:
-        #     self.blks[idx].update_pos(val)
-        # for idx in self.rowmates:
-        #     self.blks[idx].update_pos(val)
-        # for idx in self.colmates:
-        #     self.blks[idx].update_pos(val)
 
     def update_pos(self, val):
         if len(self.pos) == 0:
             return
+        LOGGER.debug('%i: removing possible %i' % (self.idx, val))
         try:
             idx = self.pos.index(val)
             self.pos.pop(idx)
             removed = True
+            LOGGER.debug('       pos(%i) found at index %i, removed' % (val, idx))
         except ValueError:
             removed = False
+            LOGGER.debug('       pos(%i) not found.' % val)
         if len(self.pos) == 1:
             if not removed:
                 raise RuntimeError('How did this happen? Why was it not'
                                    'updated before this?')
             if self.val != -1:
                 raise RuntimeError('Cannot have len(pos)==1 and val!=-1')
-            LOGGER.debug('update_pos: block(%i,%i) value -> %i' %
-                         (self.row, self.col, self.pos[0]))
+            LOGGER.debug('       %i: now only one possible left, updating -> %i' %
+                         (self.idx, self.pos[0]))
             self.set_value(self.pos[0])
-
-    def search_pos_1(self):
-        """
-        Type 1 search - does a possible only exist in one place in
-        a row, col or cel?
-        """
-        def searchmates(mates_idx):
-            rowpos = {}
-            for idx in mates_idx:
-                for pos in self.blks[idx].pos:
-                    if pos not in rowpos:
-                        rowpos[pos] = []
-                    rowpos[pos].append(idx)
-            for posval in rowpos:
-                if len(rowpos[posval]) == 1:
-                    blk = self.blks[rowpos[posval][0]]
-                    LOGGER.debug('search_pos_1: block(%i,%i) value -> %i' %
-                                 (blk.row, blk.col, posval))
-                    blk.set_value(posval)
-        searchmates(self.rowmates)
-        searchmates(self.colmates)
-        searchmates(self.celmates)
-
-    def solve_pairs(self):
-        """
-        Look for pairs of possibles - there can be more than two
-        blocks that have two possibles, but not more than two
-        that have the *same* two possibles!
-        :return:
-        """
-        twopos = []
-        search_area = self.areamates[:]
-        search_area.append(self.idx)
-        for idx in search_area:
-            if len(self.blks[idx].pos) == 2:
-                twopos.append(idx)
-
-        if len(twopos) > 0:
-
-            for idx in range(81):
-                print idx, self.blks[idx].pos, id(self.blks[idx])
-
-            print twopos
-
-            for row in range(9):
-                for col in range(9):
-                    print '%3i' % self.blks[Puzzle.idx_from_addr((row, col))].val,
-                print ''
-
-            raise RuntimeError
-
-        if len(twopos) == 2:
-            blk_one = self.blks[twopos[0]]
-            blk_two = self.blks[twopos[1]]
-
-            print blk_one.idx, blk_two.idx, blk_one.pos
-
-            for idx in range(81):
-                    print idx, self.blks[idx].pos
-            raise RuntimeError
-
-            if blk_one.pos == blk_one.pos:
-                search_area_minus = search_area[:]
-
-                print search_area_minus
-
-                search_area_minus.pop(search_area_minus.index(blk_one.idx))
-                search_area_minus.pop(search_area_minus.index(blk_two.idx))
-
-                print search_area_minus
-
-                for idx in search_area_minus:
-                    print idx, self.blks[idx].pos
-
-                    self.blks[idx].update_pos(blk_one.pos[0])
-                    self.blks[idx].update_pos(blk_one.pos[1])
-
-                    print idx, self.blks[idx].pos
-
-                raise RuntimeError
-            else:
-                print blk_one.idx, blk_one.pos
-                print blk_two.idx, blk_two.pos
-                raise RuntimeError('that is odd - should be the same')
-
-        elif len(twopos) > 2:
-
-            print twopos
-
-            raise RuntimeError('multiples of two are technically '
-                               'possible... handle this')
-
-    def solve_triples(self):
-        """
-        Look for pairs of possibles
-        :return:
-        """
-        threepos = []
-        for idx in self.areamates:
-            if len(blocks[idx].pos) == 3:
-                threepos.append(idx)
-        if len(threepos) == 3:
-            raise RuntimeError('yay')
-        elif len(threepos) > 3:
-            raise RuntimeError('this is not possible')
-
 
 puz_solved = 0
 puz_failed = 0
 # for puzctr in range(len(puzzles)):
-for puzctr in range(314,315):
+# for puzctr in range(314,315):
+for puzctr in range(1,2):
 
     print 'puzzle', puzctr
 
@@ -430,30 +356,19 @@ for puzctr in range(314,315):
 
     puz.print_puzzle()
 
-    for loopctr in range(0, 1):
+    # run searches
+    puz.run_type_1()
+    puz.run_pairs()
 
-        # run searches
-        # puz.run_type_1()
-        # puz.run_pairs()
+    nonzero_pos = puz.get_pos()
+    if nonzero_pos > 0:
+        # print 'puzzle %06i: NOT SOLVED' % puzctr
+        puz_failed += 1
+    else:
+        # print 'puzzle %06i: okay' % puzctr
+        puz_solved += 1
 
-        nonzero_pos = puz.get_pos()
-        if nonzero_pos > 0:
-            # print 'puzzle %06i: NOT SOLVED' % puzctr
-            puz_failed += 1
-        else:
-            # print 'puzzle %06i: okay' % puzctr
-            puz_solved += 1
-
-        # # show the values
-        # for row in xrange(0, 9):
-        #     for col in xrange(0, 9):
-        #         blk = blocks[idx_from_addr((row, col))]
-        #         print '%2i ' % blk.val,
-        #     print ''
-
-        # print 80 * '*'
-
-puz.print_puzzle()
+    puz.print_puzzle()
 
 print 'solved(%i) failed(%i)' % (puz_solved, puz_failed)
 
