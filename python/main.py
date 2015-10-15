@@ -106,6 +106,11 @@ class Puzzle(object):
                         blk = self.blocks[rpos[pos][0]]
                         blk.set_value(pos)
 
+    # method to use the line eliminator method
+    def run_line_eliminator(self):
+        for cel in CELS:
+            raise NotImplementedError
+
     def run_pairs(self):
         for rcc in [ROWS, COLS, CELS]:
             for rowctr, row in enumerate(rcc):
@@ -213,6 +218,10 @@ ROWS = [range(idx, idx+9) for idx in range(0, 81, 9)]
 COLS = [range(idx, 81, 9) for idx in range(9)]
 CELS = [Puzzle._celmates_from_cel(idx) for idx in range(9)]
 
+
+print CELS
+
+raise RuntimeError
 
 class Block(object):
     def __init__(self, block_list, row, col, val=-1):
