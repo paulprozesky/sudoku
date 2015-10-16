@@ -17,7 +17,7 @@ def read_puzzles_from_file(puzfile):
         if len(line) < 40:
             break
         puz = []
-        for idx in range(0, 81):
+        for idx in range(81):
             val = line[idx]
             if val == '.':
                 puz.append(-1)
@@ -29,10 +29,11 @@ def read_puzzles_from_file(puzfile):
 filename = '/home/paulp/projects/sudoku.github/puzzles/subig20.txt'
 filename = '/home/paulp/projects/sudoku.github/puzzles/top870.txt'
 
-#filename = '/home/paulp/projects/code/sudoku.github/puzzles/top870.txt'
+filename = '/home/paulp/projects/code/sudoku.github/puzzles/top870.txt'
 
 puzzles = read_puzzles_from_file(filename)
 print 'Loaded %i puzzles from %s.' % (len(puzzles), filename)
+
 
 class Puzzle(object):
     """
@@ -44,8 +45,8 @@ class Puzzle(object):
 
         # make the blocks
         self.unknown_blocks = []
-        for row in xrange(0, 9):
-            for col in xrange(0, 9):
+        for row in range(9):
+            for col in range(9):
                 blk = Block(self.blocks, row, col)
                 self.blocks.append(blk)
                 self.unknown_blocks.append(blk.idx)
@@ -55,7 +56,7 @@ class Puzzle(object):
         self.print_puzzle(True)
 
         # update the blocks from the initial values
-        for idx in range(0, 81):
+        for idx in range(81):
             if self.puzzle[idx] > 0:
                 self.blocks[idx].set_value(self.puzzle[idx])
 
@@ -87,8 +88,8 @@ class Puzzle(object):
 
     def run_type_1(self):
         """
-        If a possible only occurs once in a row, col or cel,
-        then it must be that value
+        If a possible only occurs once in a row, col or cel, then it must be
+        that value
         :return:
         """
         for rcc in [ROWS, COLS, CELS]:
@@ -102,51 +103,60 @@ class Puzzle(object):
                 LOGGER.debug('RCC %i possibles: %s' % (rowctr, rpos))
                 for pos in rpos:
                     if len(rpos[pos]) == 1:
-                        LOGGER.debug('          block %i can only be %i' % (rpos[pos][0], pos))
+                        LOGGER.debug('          block %i can only be %i' %
+                                     (rpos[pos][0], pos))
                         blk = self.blocks[rpos[pos][0]]
                         blk.set_value(pos)
 
-    # method to use the line eliminator method
     def run_line_eliminator(self):
-        for cel in CELS:
+        """
+        Method to use the line eliminator method.
+        If a pos is only in one row or col in a cel, it can be removed from
+        the rest of that row or col.
+        :return:
+        """
+        for cel in CELS_ROWS:
             raise NotImplementedError
 
     def run_pairs(self):
-        for rcc in [ROWS, COLS, CELS]:
+        for rcc in [('row', ROWS), ('col', COLS), ('cel', CELS)]:
             for rowctr, row in enumerate(rcc):
                 pairs = []
                 for idx in row:
-                    blk = self.blocks[idx]
-                    if len(blk.pos) == 2:
+                    if len(self.blocks[idx].pos) == 2:
                         pairs.append(idx)
                 if len(pairs) == 2:
-                    if self.blocks[pairs[0]].pos == self.blocks[pairs[1]].pos:
-                        raise RuntimeError('yay')
-                        print pairs[0], self.blocks[pairs[0]].pos
-                        print pairs[1], self.blocks[pairs[1]].pos
+                    blks = [self.blocks[pairs[idx]] for idx in range(2)]
+                    if blks[0].pos == blks[1].pos:
+                        for ctr in range(2):
+                            print pairs[ctr], blks[ctr].idx, blks[ctr].pos
+                        raise RuntimeError('yay2')
+                elif len(pairs) > 2:
+                    raise RuntimeError('foo2')
 
     def run_triples(self):
         for rcc in [ROWS, COLS, CELS]:
             for rowctr, row in enumerate(rcc):
                 pairs = []
                 for idx in row:
-                    blk = self.blocks[idx]
-                    if len(blk.pos) == 3:
+                    if len(self.blocks[idx].pos) == 3:
                         pairs.append(idx)
                 if len(pairs) == 3:
-                    if (self.blocks[pairs[0]].pos == self.blocks[pairs[1]].pos) and\
-                            (self.blocks[pairs[0]].pos == self.blocks[pairs[2]].pos):
-                        raise RuntimeError('yay')
-                        print pairs[0], self.blocks[pairs[0]].pos
-                        print pairs[1], self.blocks[pairs[1]].pos
-
+                    blks = [self.blocks[pairs[idx]] for idx in range(3)]
+                    if (blks[0].pos == blks[1].pos) and \
+                            (blks[0].pos == blks[2].pos):
+                        for ctr in range(3):
+                            print pairs[ctr], blks[ctr].idx, blks[ctr].pos
+                        raise RuntimeError('yay3')
+                elif len(pairs) > 3:
+                    raise RuntimeError('foo3')
 
     def get_pos(self):
         # get the possibles again
         nz_pos = 0
-        for row in xrange(0, 9):
+        for row in range(9):
             rowstring = ''
-            for col in xrange(0, 9):
+            for col in range(9):
                 blk = self.blocks[Puzzle.idx_from_addr((row, col))]
                 rowstring += '%3i ' % len(blk.pos)
                 if blk.pos:
@@ -217,11 +227,9 @@ class Puzzle(object):
 ROWS = [range(idx, idx+9) for idx in range(0, 81, 9)]
 COLS = [range(idx, 81, 9) for idx in range(9)]
 CELS = [Puzzle._celmates_from_cel(idx) for idx in range(9)]
+CELS_ROWS = [[c[ctr:ctr+3] for ctr in range(0, 9, 3)] for c in CELS]
+CELS_COLS = [[c[ctr:9:3] for ctr in range(3)] for c in CELS]
 
-
-print CELS
-
-raise RuntimeError
 
 class Block(object):
     def __init__(self, block_list, row, col, val=-1):
