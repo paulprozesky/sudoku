@@ -29,7 +29,7 @@ def read_puzzles_from_file(puzfile):
 filename = '/home/paulp/projects/sudoku.github/puzzles/subig20.txt'
 filename = '/home/paulp/projects/sudoku.github/puzzles/top870.txt'
 
-filename = '/home/paulp/projects/code/sudoku.github/puzzles/top870.txt'
+# filename = '/home/paulp/projects/code/sudoku.github/puzzles/top870.txt'
 
 puzzles = read_puzzles_from_file(filename)
 print 'Loaded %i puzzles from %s.' % (len(puzzles), filename)
@@ -92,20 +92,21 @@ class Puzzle(object):
         that value
         :return:
         """
-        for rcc in [ROWS, COLS, CELS]:
-            for rowctr, row in enumerate(rcc):
-                rpos = {}
-                for idx in row:
+        for rcc in [('row', ROWS), ('col', COLS), ('cel', CELS)]:
+            grpname = rcc[0]
+            for grpctr, grp in enumerate(rcc[1]):
+                grppos = {}
+                for idx in grp:
                     for pos in self.blocks[idx].pos:
-                        if pos not in rpos:
-                            rpos[pos] = []
-                        rpos[pos].append(idx)
-                LOGGER.debug('RCC %i possibles: %s' % (rowctr, rpos))
-                for pos in rpos:
-                    if len(rpos[pos]) == 1:
+                        if pos not in grppos:
+                            grppos[pos] = []
+                        grppos[pos].append(idx)
+                LOGGER.debug('%s %i possibles: %s' % (grpname, grpctr, grppos))
+                for pos in grppos:
+                    if len(grppos[pos]) == 1:
                         LOGGER.debug('          block %i can only be %i' %
-                                     (rpos[pos][0], pos))
-                        blk = self.blocks[rpos[pos][0]]
+                                     (grppos[pos][0], pos))
+                        blk = self.blocks[grppos[pos][0]]
                         blk.set_value(pos)
 
     def run_line_eliminator(self):
@@ -120,9 +121,10 @@ class Puzzle(object):
 
     def run_pairs(self):
         for rcc in [('row', ROWS), ('col', COLS), ('cel', CELS)]:
-            for rowctr, row in enumerate(rcc):
+            grpname = rcc[0]
+            for grpctr, grp in enumerate(rcc[1]):
                 pairs = []
-                for idx in row:
+                for idx in grp:
                     if len(self.blocks[idx].pos) == 2:
                         pairs.append(idx)
                 if len(pairs) == 2:
@@ -132,13 +134,15 @@ class Puzzle(object):
                             print pairs[ctr], blks[ctr].idx, blks[ctr].pos
                         raise RuntimeError('yay2')
                 elif len(pairs) > 2:
-                    raise RuntimeError('foo2')
+                    raise RuntimeError('boo2')
 
     def run_triples(self):
-        for rcc in [ROWS, COLS, CELS]:
-            for rowctr, row in enumerate(rcc):
+        for rcc in [('row', ROWS), ('col', COLS), ('cel', CELS)]:
+            grpname = rcc[0]
+            for grpctr, grp in enumerate(rcc[1]):
                 pairs = []
-                for idx in row:
+                print grpname, grpctr, grp
+                for idx in grp:
                     if len(self.blocks[idx].pos) == 3:
                         pairs.append(idx)
                 if len(pairs) == 3:
@@ -149,7 +153,15 @@ class Puzzle(object):
                             print pairs[ctr], blks[ctr].idx, blks[ctr].pos
                         raise RuntimeError('yay3')
                 elif len(pairs) > 3:
-                    raise RuntimeError('foo3')
+                    # for ctr in range(len(pairs)):
+                    #     print pairs[ctr], self.blocks[pairs[ctr]].idx, self.blocks[pairs[ctr]].pos
+                    # for idx in grp:
+                    #     print idx, self.blocks[idx].pos
+                    # print ''
+                    # for idx in CELS[1]:
+                    #     print idx, self.blocks[idx].pos
+                    # raise RuntimeError('boo3')
+                    pass
 
     def get_pos(self):
         # get the possibles again
@@ -223,6 +235,32 @@ class Puzzle(object):
     @staticmethod
     def colmates(col):
         return range(col, 9*9, 9)
+
+    @staticmethod
+    def in_a_cel_row(idx1, idx2, search_list=None):
+        """
+        Are two indices in the same cel row?
+        :param idx1:
+        :param idx2:
+        :return:
+        """
+        if search_list is None:
+            search_list = CELS_ROWS
+        for rowctr, row in enumerate(search_list):
+            for crowctr, crow in enumerate(row):
+                if (idx1 in crow) and (idx2 in crow):
+                    return rowctr, crowctr
+        return -1, -1
+
+    @staticmethod
+    def in_a_cel_col(idx1, idx2):
+        """
+        Are two indices in the same cel col?
+        :param idx1:
+        :param idx2:
+        :return:
+        """
+        return Puzzle.in_a_cel_row(idx1, idx2, CELS_COLS)
 
 ROWS = [range(idx, idx+9) for idx in range(0, 81, 9)]
 COLS = [range(idx, 81, 9) for idx in range(9)]
@@ -376,6 +414,8 @@ for puzctr in range(1,2):
     # run searches
     puz.run_type_1()
     puz.run_pairs()
+    puz.run_triples()
+    puz.run_line_eliminator()
 
     nonzero_pos = puz.get_pos()
     if nonzero_pos > 0:
